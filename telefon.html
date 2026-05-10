@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Kim Yaptı? — Telefon</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@400;600;700&display=swap');
+  :root{
+    --bg:#080a0d;--sur:#12141a;--sur2:#1a1d26;
+    --gold:#f0c040;--red:#e74c3c;--blue:#2980b9;--green:#2ecc71;
+    --text:#e8eaf2;--dim:#606880;--bdr:rgba(255,255,255,.07);--r:10px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{background:var(--bg);color:var(--text);font-family:'Barlow Condensed',sans-serif;min-height:100vh;display:flex;flex-direction:column}
+
+  /* EKRANLAR */
+  .ekran{display:none;flex-direction:column;min-height:100vh}
+  .ekran.aktif{display:flex}
+
+  /* HEADER */
+  .hdr{background:var(--sur);border-bottom:1px solid var(--bdr);padding:10px 14px;display:flex;align-items:center;gap:10px;flex-shrink:0;position:sticky;top:0;z-index:10}
+  .logo-sm{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;color:var(--gold)}
+  .oyuncu-badge{margin-left:auto;font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:4px 12px;border-radius:20px;background:rgba(240,192,64,.1);color:var(--gold);border:1px solid rgba(240,192,64,.3)}
+
+  /* GENEL */
+  .btn{font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:13px;border-radius:var(--r);border:none;cursor:pointer;transition:all .2s;width:100%}
+  .btn:active{transform:scale(.97)}
+  .btn-gold{background:var(--gold);color:#000}
+  .btn-red{background:var(--red);color:#fff}
+  .btn-outline{background:transparent;border:1.5px solid var(--bdr);color:var(--dim)}
+  .btn:disabled{opacity:.3;cursor:default}
+
+  .merkez{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;gap:16px;text-align:center}
+  .büyük-ikon{font-size:72px}
+  .büyük-baslik{font-family:'Bebas Neue',sans-serif;font-size:52px;letter-spacing:5px}
+  .alt-metin{font-size:14px;color:var(--dim);letter-spacing:2px;text-transform:uppercase;line-height:1.6}
+
+  /* ══ KİŞİ SEÇİMİ (Katil & Dedektif için) ══ */
+  .secim-header{padding:14px 16px;background:var(--sur2);border-bottom:1px solid var(--bdr)}
+  .secim-baslik{font-size:11px;text-transform:uppercase;letter-spacing:2px;color:var(--dim)}
+  .secim-soru{font-size:18px;font-weight:700;margin-top:4px}
+
+  .kisi-liste{display:flex;flex-direction:column;gap:8px;padding:16px;flex:1;overflow-y:auto}
+  .kisi-btn{display:flex;align-items:center;gap:14px;background:var(--sur2);border:2px solid var(--bdr);border-radius:var(--r);padding:14px 16px;cursor:pointer;transition:all .2s;-webkit-tap-highlight-color:transparent}
+  .kisi-btn:hover,.kisi-btn:active{border-color:var(--gold);background:rgba(240,192,64,.05)}
+  .kisi-btn.secildi{border-color:var(--red);background:rgba(231,76,60,.1)}
+  .kisi-btn.secildi-mavi{border-color:var(--blue);background:rgba(41,128,185,.1)}
+  .kisi-ikon{font-size:26px;flex-shrink:0}
+  .kisi-isim{font-size:20px;font-weight:700;flex:1;text-align:left}
+
+  .secim-footer{padding:16px;background:var(--sur);border-top:1px solid var(--bdr);flex-shrink:0}
+
+  /* ══ ROL EKRANI ══ */
+  .rol-katil{background:radial-gradient(ellipse at center,#1a0505,#080a0d)}
+  .rol-katil .büyük-baslik{color:var(--red)}
+  .rol-dedektif{background:radial-gradient(ellipse at center,#050d1a,#080a0d)}
+  .rol-dedektif .büyük-baslik{color:var(--blue)}
+  .rol-sivil .büyük-baslik{color:var(--dim)}
+
+  .rol-aciklama{background:var(--sur2);border:1px solid var(--bdr);border-radius:var(--r);padding:14px 16px;font-size:14px;color:var(--dim);line-height:1.7;max-width:340px;text-align:left}
+  .rol-aciklama strong{color:var(--text)}
+
+  /* ══ UYKU / BEKLENİYOR ══ */
+  .uyku-bg{background:radial-gradient(ellipse at center,#050810,#020304);flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:30px;text-align:center}
+  .uyku-ikon{font-size:64px;animation:nefes 3s ease-in-out infinite}
+  @keyframes nefes{0%,100%{transform:scale(1);opacity:.8}50%{transform:scale(1.08);opacity:1}}
+  .uyku-baslik{font-family:'Bebas Neue',sans-serif;font-size:40px;letter-spacing:4px;color:#3a4060}
+  .uyku-alt{font-size:13px;color:#303550;letter-spacing:2px;text-transform:uppercase}
+
+  /* ══ DEDEKTİF SONUÇ ══ */
+  .sonuc-karti{border-radius:var(--r);padding:20px;text-align:center;margin:16px;animation:pop .4s cubic-bezier(.34,1.56,.64,1)}
+  .sonuc-karti.katil{background:rgba(231,76,60,.15);border:2px solid var(--red)}
+  .sonuc-karti.masum{background:rgba(46,204,113,.1);border:2px solid var(--green)}
+  .sonuc-karti-ikon{font-size:40px}
+  .sonuc-karti-isim{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:3px;margin-top:6px}
+  .sonuc-karti.katil .sonuc-karti-isim{color:var(--red)}
+  .sonuc-karti.masum .sonuc-karti-isim{color:var(--green)}
+  .sonuc-karti-aciklama{font-size:13px;color:var(--dim);margin-top:6px}
+  @keyframes pop{from{transform:scale(.7);opacity:0}to{transform:scale(1);opacity:1}}
+
+  /* ══ OYLAMA ══ */
+  .oylama-info{padding:14px 16px;background:rgba(231,76,60,.08);border-bottom:1px solid rgba(231,76,60,.2);font-size:14px;color:var(--dim);line-height:1.5}
+
+  /* ══ BİTTİ ══ */
+  .bitti-sivil{background:radial-gradient(ellipse at center,#051a0d,#080a0d)}
+  .bitti-sivil .büyük-baslik{color:var(--green)}
+  .bitti-katil{background:radial-gradient(ellipse at center,#1a0505,#080a0d)}
+  .bitti-katil .büyük-baslik{color:var(--red)}
+
+  .oyuncu-listesi-bitti{width:100%;max-width:360px;display:flex;flex-direction:column;gap:6px;margin-top:8px}
+  .oyuncu-bitti-item{display:flex;align-items:center;gap:10px;background:var(--sur2);border:1px solid var(--bdr);border-radius:8px;padding:10px 14px}
+  .oyuncu-bitti-item.katil{border-color:rgba(231,76,60,.35);background:rgba(231,76,60,.07)}
+  .oyuncu-bitti-item.dedektif{border-color:rgba(41,128,185,.35);background:rgba(41,128,185,.07)}
+  .ob-isim{font-size:16px;font-weight:700;flex:1}
+  .ob-rol{font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--dim)}
+  .ob-ikon{font-size:18px}
+
+  /* BAĞLANTI */
+  .conn{position:fixed;bottom:8px;right:12px;font-size:11px;color:var(--dim);display:flex;align-items:center;gap:5px;background:var(--sur);padding:4px 10px;border-radius:20px;border:1px solid var(--bdr);z-index:100}
+  .dot{width:6px;height:6px;border-radius:50%}
+  .dot.ok{background:var(--green);animation:blink 2s infinite}
+  .dot.no{background:var(--red)}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+  /* GEÇİŞ */
+  .overlay-gecis{position:fixed;inset:0;background:#000;z-index:999;opacity:0;pointer-events:none;transition:opacity .3s}
+  .overlay-gecis.goster{opacity:1;pointer-events:all}
+
+  /* LOBİ */
+  .lobi-merkez{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:30px;text-align:center}
+</style>
+</head>
+<body>
+
+<div class="overlay-gecis" id="gecis-ov"></div>
+
+<!-- ══ GİRİŞ / LOBİ ══ -->
+<div class="ekran aktif" id="ekran-giris">
+  <div class="hdr"><span class="logo-sm">KİM YAPTI?</span></div>
+  <div class="lobi-merkez">
+    <div style="font-size:60px">🎭</div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:36px;letter-spacing:4px;color:var(--gold)">KİM YAPTI?</div>
+    <div style="font-size:14px;color:var(--dim);text-align:center;line-height:1.7">
+      Tablet üzerinden oyun başlatılınca<br>rolün bu ekranda görünecek.<br><br>
+      <strong style="color:var(--text)">Adın nedir?</strong>
+    </div>
+    <input id="giris-isim" type="text" placeholder="Adını gir..." maxlength="16" autocomplete="off"
+      style="background:var(--sur2);border:1.5px solid var(--bdr);border-radius:var(--r);padding:13px 16px;font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:600;color:var(--text);outline:none;width:100%;max-width:300px">
+    <button class="btn btn-gold" style="max-width:300px" onclick="girisYap()">Giriş Yap →</button>
+  </div>
+</div>
+
+<!-- ══ BEKLEME (Lobi - Oyun başlamadı) ══ -->
+<div class="ekran" id="ekran-bekleme">
+  <div class="hdr"><span class="logo-sm">KİM YAPTI?</span><span class="oyuncu-badge" id="bekleme-isim-badge">—</span></div>
+  <div class="merkez">
+    <div class="büyük-ikon">⏳</div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:3px;color:var(--dim)">BEKLENİYOR</div>
+    <div class="alt-metin">Tablet'te oyuncular ekleniyor...<br>Oyun başlayınca rolün görünecek.</div>
+  </div>
+</div>
+
+<!-- ══ ROL DAĞITIM (Bu kişinin sırası değil) ══ -->
+<div class="ekran" id="ekran-rol-bekle">
+  <div class="hdr"><span class="logo-sm">KİM YAPTI?</span><span class="oyuncu-badge" id="rol-bekle-badge">—</span></div>
+  <div class="merkez">
+    <div class="büyük-ikon">🔒</div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:3px;color:var(--dim)">SIRABEKLİYOR</div>
+    <div class="alt-metin">Sıran gelince tablet seni çağıracak.<br>Hazır ol!</div>
+  </div>
+</div>
+
+<!-- ══ ROL GÖSTER ══ -->
+<div class="ekran" id="ekran-rol">
+  <div class="hdr"><span class="logo-sm">KİM YAPTI?</span><span class="oyuncu-badge" id="rol-isim-badge">—</span></div>
+  <div class="merkez" id="rol-merkez">
+    <div class="büyük-ikon" id="rol-ikon">🔪</div>
+    <div style="font-size:12px;text-transform:uppercase;letter-spacing:3px;color:var(--dim)">Senin Rolün</div>
+    <div class="büyük-baslik" id="rol-baslik">KATİL</div>
+    <div class="rol-aciklama" id="rol-aciklama"></div>
+    <div style="font-size:12px;color:var(--dim);margin-top:8px">Rolünü gördükten sonra tableti komşuna ver</div>
+  </div>
+</div>
+
+<!-- ══ GECE — SİVİL ══ -->
+<div class="ekran" id="ekran-gece-sivil">
+  <div class="hdr"><span class="logo-sm">KİM YAPTI?</span><span class="oyuncu-badge" id="gece-sivil-badge">—</span></div>
+  <div class="uyku-bg">
+    <div class="uyku-ikon">😴</div>
+    <div class="uyku-baslik">UYUYORSUN</div>
+    <div class="uyku-alt">Tablet sabahı ilan edene kadar bekle</div>
+  </div>
+</div>
+
+<!-- ══ GECE — KATİL ══ -->
+<div class="ekran" id="ekran-gece-katil">
+  <div class="hdr"><span class="logo-sm">KİM YAPTI?</span><span class="oyuncu-badge" id="gece-katil-badge">—</span></div>
+  <div class="secim-header">
+    <div class="secim-baslik">🔪 Katil — Gece Aksiyonu</div>
+    <div class="secim-soru" id="katil-soru">Bu gece kimi öldürmek istiyorsun?</div>
+  </div>
+  <div class="kisi-liste" id="katil-kisi-liste"></div>
+  <div class="secim-footer">
+    <button class="btn btn-red" id="btn-katil-onayla" onclick="katilOnaylaFunc()" disabled>🔪 Onayla</button>
+  </div>
+</div>
+
+<!-- ══ GECE — DEDEKTİF ══ -->
+<div class="ekran" id="ekran-gece-dedektif">
+  <div class="hdr"><span class="logo-sm">KİM YAPTI?</span><span class="oyuncu-badge" id="gece-ded-badge">—</span></div>
+  <div class="secim-header">
+    <div class="secim-baslik">🕵️ Dedektif — Gece Sorgusu</div>
+    <div class="secim-soru">Bu gece kimi sorgulamak istiyorsun?</div>
+  </div>
+  <div class="kisi-liste" id="dedektif-kisi-liste"></div>
+  <div class="secim-footer">
+    <button class="btn btn-gold" id="btn-ded-onayla" onclick="dedektifOnaylaFunc()" disabled>🔍 Sorgula</button>
+  </div>
+</div>
+
+<!-- ══ DEDEKTİF SONUÇ ══ -->
+<div class="ekran" id="ekran-ded-sonuc">
+  <div class="hdr"><span class="logo-sm">KİM YAPTI?</span><span class="oyuncu-badge">🕵️ Dedektif</span></div>
+  <div id="ded-sonuc-icerik" style="flex:1;display:flex;flex-direction:column"></div>
+  <div style="padding:16px;background:var(--sur);border-top:1px solid var(--bdr)">
+    <div style="font-size:13px;color:var(--dim);text-align:center;line-height:1.5">Bu bilgiyi aklında tut.<br>Sabah tartışmasında kullanabilirsin.</div>
+  </div>
+</div>
+
+<!-- ══ GÜNDÜZ — BEKLEME ══ -->
+<div class="ekran" id="ekran-gunduz-bekle">
+  <div class="hdr"><span class="logo-sm">KİM YAPTI?</span><span class="oyuncu-badge" id="gunduz-bekle-badge">—</span></div>
+  <div class="merkez">
+    <div class="büyük-ikon">☀️</div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:3px;color:#f0a040">SABAH OLDU</div>
+    <div class="alt-metin" id="gunduz-bekle-mesaj">Tablet'te kim öldü görünüyor.<br>Tartışın!</div>
+  </div>
+</div>
+
+<!-- ══ ÖLDÜ ══ -->
+<div class="ekran" id="ekran-oldu">
+  <div class="hdr"><span class="logo-sm">KİM YAPTI?</span></div>
+  <div class="merkez">
+    <div class="büyük-ikon">💀</div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:36px;letter-spacing:3px;color:var(--red)">ELENDİN</div>
+    <div class="alt-metin">Bu gece hayatını kaybettin.<br>Artık izleyici olarak devam ediyorsun.<br>Sessiz kal!</div>
+  </div>
+</div>
+
+<!-- ══ OYLAMA ══ -->
+<div class="ekran" id="ekran-oylama">
+  <div class="hdr"><span class="logo-sm">KİM YAPTI?</span><span class="oyuncu-badge" id="oylama-badge">—</span></div>
+  <div class="oylama-info">Kimi sürgün etmek istiyorsun? Dikkatli seç — yanlış kişiyi sürgün edebilirsin!</div>
+  <div class="kisi-liste" id="oylama-kisi-liste"></div>
+  <div class="secim-footer">
+    <button class="btn btn-red" id="btn-oy-ver" onclick="oyVer()" disabled>🗳 Oy Ver</button>
+  </div>
+</div>
+
+<!-- ══ OY VERİLDİ ══ -->
+<div class="ekran" id="ekran-oy-verildi">
+  <div class="hdr"><span class="logo-sm">KİM YAPTI?</span></div>
+  <div class="merkez">
+    <div class="büyük-ikon">✅</div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:3px;color:var(--green)">OY VERİLDİ</div>
+    <div class="alt-metin">Diğerlerinin oy vermesi bekleniyor...</div>
+  </div>
+</div>
+
+<!-- ══ BİTTİ ══ -->
+<div class="ekran" id="ekran-bitti">
+  <div class="hdr"><span class="logo-sm">KİM YAPTI?</span></div>
+  <div class="merkez" id="bitti-merkez">
+    <div class="büyük-ikon" id="bitti-ikon">🏆</div>
+    <div class="büyük-baslik" id="bitti-baslik">KÖYLÜLER</div>
+    <div class="büyük-baslik" id="bitti-baslik2">KAZANDI</div>
+    <div class="alt-metin" id="bitti-alt">—</div>
+    <div class="oyuncu-listesi-bitti" id="bitti-liste"></div>
+  </div>
+</div>
+
+<div class="conn"><div class="dot ok" id="conn-dot"></div><span id="conn-txt">Bağlı</span></div>
+
+<script>
+let benimId = sessionStorage.getItem('kimyapti_id') || null;
+let benimIsim = sessionStorage.getItem('kimyapti_isim') || null;
+let veri = null;
+let secilenKatilHedef = null;
+let secilenDedektifHedef = null;
+let secilenOyHedef = null;
+let sonAsama = null;
+
+// ── GİRİŞ ──
+function girisYap() {
+  const isim = document.getElementById('giris-isim').value.trim();
+  if (!isim) return;
+  fetch('/api/oyuncu-ekle', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ isim })
+  }).then(r => r.json()).then(r => {
+    if (r.hata) {
+      // İsim zaten alınmış olabilir - mevcut oyuncuda ara
+      benimIsim = isim;
+      sessionStorage.setItem('kimyapti_isim', isim);
+      guncelle();
+      return;
+    }
+    benimId = r.id;
+    benimIsim = r.isim;
+    sessionStorage.setItem('kimyapti_id', benimId);
+    sessionStorage.setItem('kimyapti_isim', benimIsim);
+    guncelle();
+  });
+}
+
+document.getElementById('giris-isim').addEventListener('keydown', e => {
+  if (e.key === 'Enter') girisYap();
+});
+
+// ── API ──
+async function oyuncuVeriAl() {
+  if (!benimId) return;
+  try {
+    const r = await fetch(`/api/oyuncu?id=${benimId}`);
+    veri = await r.json();
+    if (veri.hata) { benimId = null; sessionStorage.removeItem('kimyapti_id'); return; }
+    document.getElementById('conn-dot').className = 'dot ok';
+    document.getElementById('conn-txt').textContent = 'Bağlı';
+    render();
+  } catch(e) {
+    document.getElementById('conn-dot').className = 'dot no';
+    document.getElementById('conn-txt').textContent = 'Bağlantı yok';
+  }
+}
+
+async function guncelle() { await oyuncuVeriAl(); }
+
+// ── EKRAN GEÇİŞİ ──
+let aktifEkran = null;
+function ekranGec(id) {
+  if (aktifEkran === id) {
+    document.querySelectorAll('.ekran').forEach(e => e.classList.remove('aktif'));
+    document.getElementById('ekran-' + id).classList.add('aktif');
+    return;
+  }
+  aktifEkran = id;
+  const ov = document.getElementById('gecis-ov');
+  ov.classList.add('goster');
+  setTimeout(() => {
+    document.querySelectorAll('.ekran').forEach(e => e.classList.remove('aktif'));
+    document.getElementById('ekran-' + id).classList.add('aktif');
+    ov.classList.remove('goster');
+  }, 250);
+}
+
+// ── RENDER ──
+function render() {
+  if (!veri) { if (!benimId) { ekranGec('giris'); } return; }
+
+  const asama = veri.asama;
+  const rol = veri.benimRolum;
+  const hayatta = veri.hayatta;
+
+  // Öldüyse özel ekran (oylama hariç)
+  if (!hayatta && asama !== 'bitti') { ekranGec('oldu'); return; }
+
+  if (asama === 'lobi') {
+    document.getElementById('bekleme-isim-badge').textContent = veri.isim;
+    ekranGec('bekleme'); return;
+  }
+
+  if (asama === 'rol_dagitim') {
+    document.getElementById('rol-isim-badge').textContent = veri.isim;
+    document.getElementById('rol-bekle-badge').textContent = veri.isim;
+    renderRolEkrani();
+    // Rol dağıtım zamanı - rol ekranını göster
+    ekranGec('rol'); return;
+  }
+
+  if (asama === 'gece') {
+    renderGeceEkrani(); return;
+  }
+
+  if (asama === 'gunduz') {
+    const olduIsim = veri.gunduz.oldu;
+    document.getElementById('gunduz-bekle-badge').textContent = veri.isim;
+    document.getElementById('gunduz-bekle-mesaj').textContent =
+      olduIsim ? `${olduIsim} bu gece hayatını kaybetti. Tartışın!` : 'Bu gece kimse ölmedi. Tartışın!';
+    ekranGec('gunduz-bekle'); return;
+  }
+
+  if (asama === 'oylama') {
+    if (veri.gunduz.benimOyum) { ekranGec('oy-verildi'); return; }
+    // Oylama ekranı zaten açıksa yeniden çizme — seçim sıfırlanır
+    if (aktifEkran === 'oylama') return;
+    renderOylama(); return;
+  }
+
+  if (asama === 'gunduz_sonuc') {
+    ekranGec('gunduz-bekle'); return;
+  }
+
+  if (asama === 'bitti') { renderBitti(); return; }
+}
+
+// ── ROL EKRANI ──
+function renderRolEkrani() {
+  const rol = veri.benimRolum;
+  const merkez = document.getElementById('rol-merkez');
+  document.getElementById('rol-isim-badge').textContent = veri.isim;
+
+  const bilgiler = {
+    katil: {
+      ikon: '🔪', baslik: 'KATİL', renk: 'var(--red)',
+      aciklama: '<strong>Senin görevin:</strong> Her gece telefon üzerinden bir kişiyi öldür. Kimliğini gizle, sivillere masum görün. Tüm köylüler senin gibi olana kadar hayatta kal.'
+    },
+    dedektif: {
+      ikon: '🕵️', baslik: 'DEDEKTİF', renk: 'var(--blue)',
+      aciklama: '<strong>Senin görevin:</strong> Her gece telefon üzerinden bir kişiyi sorgula — masum mu katil mi öğren. Bu bilgiyi gündüz tartışmasında akıllıca kullan. Kimliğini açıklamak zorunda değilsin.'
+    },
+    sivil: {
+      ikon: '👤', baslik: 'SİVİL', renk: 'var(--dim)',
+      aciklama: '<strong>Senin görevin:</strong> Gündüz tartışmalarında katili bul ve sürgün edilmesini sağla. Gece sadece bekle — telefona bakman yeterli.'
+    }
+  };
+
+  const b = bilgiler[rol] || bilgiler.sivil;
+  document.getElementById('rol-ikon').textContent = b.ikon;
+  document.getElementById('rol-baslik').textContent = b.baslik;
+  document.getElementById('rol-baslik').style.color = b.renk;
+  document.getElementById('rol-aciklama').innerHTML = b.aciklama;
+  merkez.className = 'merkez rol-' + rol;
+}
+
+// ── GECE EKRANI ──
+function renderGeceEkrani() {
+  const rol = veri.benimRolum;
+
+  if (rol === 'sivil') {
+    document.getElementById('gece-sivil-badge').textContent = veri.isim;
+    ekranGec('gece-sivil'); return;
+  }
+
+  if (rol === 'katil') {
+    // Zaten seçim yaptıysa bekle
+    if (veri.gece.katilYapti) {
+      document.getElementById('gece-sivil-badge').textContent = veri.isim;
+      ekranGec('gece-sivil'); return;
+    }
+    if (aktifEkran === 'gece-katil') return;
+    renderKatilSecim(); return;
+  }
+
+  if (rol === 'dedektif') {
+    // Zaten sorgu yaptıysa sonucu göster
+    if (veri.gece.sonuc) { renderDedektifSonuc(); return; }
+    if (aktifEkran === 'gece-dedektif') return;
+    renderDedektifSecim(); return;
+  }
+}
+
+// ── KATİL SEÇİM ──
+function renderKatilSecim() {
+  document.getElementById('gece-katil-badge').textContent = veri.isim;
+  secilenKatilHedef = null;
+  document.getElementById('btn-katil-onayla').disabled = true;
+
+  const liste = document.getElementById('katil-kisi-liste');
+  liste.innerHTML = '';
+  veri.hayattakiler.forEach(o => {
+    const div = document.createElement('div');
+    div.className = 'kisi-btn';
+    div.dataset.id = o.id;
+    div.innerHTML = `<span class="kisi-ikon">👤</span><span class="kisi-isim">${o.isim}</span>`;
+    div.addEventListener('click', () => {
+      document.querySelectorAll('#katil-kisi-liste .kisi-btn').forEach(b => b.classList.remove('secildi'));
+      div.classList.add('secildi');
+      secilenKatilHedef = o.id;
+      document.getElementById('btn-katil-onayla').disabled = false;
+    });
+    liste.appendChild(div);
+  });
+  ekranGec('gece-katil');
+}
+
+function katilOnaylaFunc() {
+  if (!secilenKatilHedef) return;
+
+  fetch('/api/katil-sec', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ katilId: benimId, hedefId: secilenKatilHedef })
+  }).then(() => {
+    document.getElementById('gece-sivil-badge').textContent = veri.isim;
+    ekranGec('gece-sivil');
+  });
+}
+
+// ── DEDEKTİF SEÇİM ──
+function renderDedektifSecim() {
+  document.getElementById('gece-ded-badge').textContent = veri.isim;
+  secilenDedektifHedef = null;
+  document.getElementById('btn-ded-onayla').disabled = true;
+
+  const liste = document.getElementById('dedektif-kisi-liste');
+  liste.innerHTML = '';
+  veri.hayattakiler.forEach(o => {
+    const div = document.createElement('div');
+    div.className = 'kisi-btn';
+    div.dataset.id = o.id;
+    div.innerHTML = `<span class="kisi-ikon">👤</span><span class="kisi-isim">${o.isim}</span>`;
+    div.addEventListener('click', () => {
+      document.querySelectorAll('#dedektif-kisi-liste .kisi-btn').forEach(b => b.classList.remove('secildi-mavi'));
+      div.classList.add('secildi-mavi');
+      secilenDedektifHedef = o.id;
+      document.getElementById('btn-ded-onayla').disabled = false;
+    });
+    liste.appendChild(div);
+  });
+  ekranGec('gece-dedektif');
+}
+
+function dedektifOnaylaFunc() {
+  if (!secilenDedektifHedef) return;
+  fetch('/api/dedektif-sorgu', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ dedektifId: benimId, hedefId: secilenDedektifHedef })
+  }).then(r => r.json()).then(() => guncelle());
+}
+
+// ── DEDEKTİF SONUÇ ──
+function renderDedektifSonuc() {
+  const sonuc = veri.gece.sonuc;
+  const sorguIsim = veri.gece.sorguladigi;
+  const icerik = document.getElementById('ded-sonuc-icerik');
+
+  icerik.innerHTML = `
+    <div class="sonuc-karti ${sonuc}">
+      <div class="sonuc-karti-ikon">${sonuc === 'katil' ? '🔪' : '✅'}</div>
+      <div class="sonuc-karti-isim">${sorguIsim || '?'}</div>
+      <div class="sonuc-karti-aciklama">${sonuc === 'katil' ? 'Bu kişi KATİLDİR!' : 'Bu kişi MASUMDUR.'}</div>
+    </div>
+    <div style="padding:16px;font-size:14px;color:var(--dim);line-height:1.7;text-align:center">
+      Sabah olduğunda bu bilgiyi<br>akıllıca kullan.<br><br>
+      <strong style="color:var(--text)">Kimliğini açıklamak zorunda değilsin.</strong>
+    </div>`;
+  ekranGec('ded-sonuc');
+}
+
+// ── OYLAMA ──
+function renderOylama() {
+  document.getElementById('oylama-badge').textContent = veri.isim;
+  secilenOyHedef = null;
+  document.getElementById('btn-oy-ver').disabled = true;
+
+  const liste = document.getElementById('oylama-kisi-liste');
+  liste.innerHTML = '';
+  veri.tumOyuncular.filter(o => o.hayatta && o.id !== benimId).forEach(o => {
+    const div = document.createElement('div');
+    div.className = 'kisi-btn';
+    div.dataset.id = o.id;
+    div.innerHTML = `<span class="kisi-ikon">👤</span><span class="kisi-isim">${o.isim}</span>`;
+    div.addEventListener('click', () => {
+      document.querySelectorAll('#oylama-kisi-liste .kisi-btn').forEach(b => b.classList.remove('secildi'));
+      div.classList.add('secildi');
+      secilenOyHedef = o.id;
+      document.getElementById('btn-oy-ver').disabled = false;
+    });
+    liste.appendChild(div);
+  });
+  ekranGec('oylama');
+}
+
+function oyVer() {
+  if (!secilenOyHedef) return;
+  fetch('/api/oy-ver', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ oyVerenId: benimId, hedefId: secilenOyHedef })
+  }).then(() => { ekranGec('oy-verildi'); });
+}
+
+// ── BİTTİ ──
+function renderBitti() {
+  const kazanan = veri.sonuc;
+  const merkez = document.getElementById('bitti-merkez');
+  merkez.className = 'merkez bitti-' + kazanan;
+  document.getElementById('bitti-ikon').textContent = kazanan === 'sivil' ? '🏆' : '🔪';
+  document.getElementById('bitti-baslik').textContent = kazanan === 'sivil' ? 'KÖYLÜLER' : 'KATİLLER';
+  document.getElementById('bitti-baslik2').textContent = 'KAZANDI';
+  document.getElementById('bitti-baslik').style.color = kazanan === 'sivil' ? 'var(--green)' : 'var(--red)';
+  document.getElementById('bitti-baslik2').style.color = kazanan === 'sivil' ? 'var(--green)' : 'var(--red)';
+  document.getElementById('bitti-alt').textContent = kazanan === 'sivil' ? 'Tüm katiller bulundu!' : 'Köy ele geçirildi!';
+
+  const liste = document.getElementById('bitti-liste');
+  liste.innerHTML = '';
+  veri.tumOyuncular.forEach(o => {
+    const div = document.createElement('div');
+    div.className = 'oyuncu-bitti-item ' + (o.rol || '');
+    const rolIkon = o.rol === 'katil' ? '🔪' : o.rol === 'dedektif' ? '🕵️' : '👤';
+    const rolAdi = o.rol === 'katil' ? 'Katil' : o.rol === 'dedektif' ? 'Dedektif' : 'Sivil';
+    div.innerHTML = `<span class="ob-ikon">${rolIkon}</span><span class="ob-isim">${o.isim}</span><span class="ob-rol">${rolAdi}</span>`;
+    liste.appendChild(div);
+  });
+  ekranGec('bitti');
+}
+
+// ── BAŞLAT ──
+window.addEventListener('load', () => {
+  // Kayıtlı kimlik varsa direkt gir
+  if (benimId && benimIsim) {
+    guncelle();
+  } else {
+    ekranGec('giris');
+  }
+  setInterval(guncelle, 2000);
+});
+</script>
+</body>
+</html>
