@@ -324,6 +324,12 @@ function ekranGec(id) {
     document.getElementById('ekran-' + id).classList.add('aktif');
     return;
   }
+  if (aktifEkran === null) {
+    aktifEkran = id;
+    document.querySelectorAll('.ekran').forEach(e => e.classList.remove('aktif'));
+    document.getElementById('ekran-' + id).classList.add('aktif');
+    return;
+  }
   aktifEkran = id;
   const ov = document.getElementById('gecis-ov');
   ov.classList.add('goster');
