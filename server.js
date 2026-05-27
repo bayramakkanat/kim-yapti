@@ -21,7 +21,7 @@ let state = {
   oyuncular: [],
   tur: 0,
   gece: { katilSecimi: null, dedektifSecimi: null, dedektifSonuc: null },
-  gunduz: { oldu: null, oylama: {}, oylamaAcik: false, surguEdilen: null },
+  gunduz: { oldu: null, oylama: {}, oylamaAcik: false, surguEdilen: null, beraberAdaylar: [], sonucBekliyor: false },
   sonuc: null,
   log: []
 };
@@ -30,7 +30,7 @@ function resetState() {
   state = {
     asama: 'lobi', oyuncular: [], tur: 0,
     gece: { katilSecimi: null, dedektifSecimi: null, dedektifSonuc: null },
-    gunduz: { oldu: null, oylama: {}, oylamaAcik: false, surguEdilen: null },
+    gunduz: { oldu: null, oylama: {}, oylamaAcik: false, surguEdilen: null, beraberAdaylar: [], sonucBekliyor: false },
     sonuc: null, log: []
   };
 }
@@ -38,9 +38,10 @@ function resetState() {
 function rolleriDagit() {
   const n = state.oyuncular.length;
   let roller = [];
-  if (n <= 6)      roller = ['katil', 'dedektif', ...Array(n-2).fill('sivil')];
-  else if (n <= 9) roller = ['katil', 'katil', 'dedektif', ...Array(n-3).fill('sivil')];
-  else             roller = ['katil', 'katil', 'dedektif', 'dedektif', ...Array(n-4).fill('sivil')];
+  if (n <= 5)       roller = ['katil',                    'dedektif', ...Array(n-2).fill('sivil')];
+  else if (n <= 8)  roller = ['katil', 'katil',            'dedektif', ...Array(n-3).fill('sivil')];
+  else if (n <= 11) roller = ['katil', 'katil',            'dedektif', 'dedektif', ...Array(n-4).fill('sivil')];
+  else              roller = ['katil', 'katil', 'katil',   'dedektif', 'dedektif', ...Array(n-5).fill('sivil')];
   for (let i = roller.length-1; i > 0; i--) {
     const j = Math.floor(Math.random()*(i+1));
     [roller[i], roller[j]] = [roller[j], roller[i]];
@@ -78,24 +79,44 @@ function sabahOl() {
   if (k) { state.sonuc = k; state.asama = 'bitti'; state.log.push(k === 'sivil' ? 'Köylüler kazandı!' : 'Katiller kazandı!'); }
 }
 
-function oylamayiBitir() {
+function oylamayiBitir(beraberlikTuru = false) {
   const sayim = {};
   Object.values(state.gunduz.oylama).forEach(id => { sayim[id] = (sayim[id]||0)+1; });
-  let maxOy = 0, surgu = null;
-  for (const [id, oy] of Object.entries(sayim)) {
-    if (oy > maxOy) { maxOy = oy; surgu = id; }
+  const maxOy = Math.max(...Object.values(sayim), 0);
+  const enCokOyAlanlar = Object.entries(sayim).filter(([,oy]) => oy === maxOy).map(([id]) => id);
+
+  // Beraberlik kontrolü
+  if (enCokOyAlanlar.length > 1) {
+    if (beraberlikTuru) {
+      // İkinci turda da beraberlik — kimse elenmiyor
+      state.gunduz.beraberAdaylar = [];
+      state.log.push('İkinci turda da beraberlik. Bu tur kimse sürgün edilmedi.');
+      state.asama = 'gunduz_sonuc';
+    } else {
+      // İlk beraberlik — tekrar oylama
+      state.gunduz.beraberAdaylar = enCokOyAlanlar;
+      state.gunduz.oylama = {};
+      state.log.push(`Beraberlik: ${enCokOyAlanlar.map(id => { const o = state.oyuncular.find(x => x.id === id); return o ? o.isim : id; }).join(', ')} — tekrar oylama!`);
+      state.asama = 'gunduz_beraberlik';
+    }
+    return;
   }
-  if (surgu) {
-    const oyuncu = state.oyuncular.find(o => o.id === surgu);
+
+  // Tek kazanan — sürgün et
+  const surguId = enCokOyAlanlar[0];
+  if (surguId) {
+    const oyuncu = state.oyuncular.find(o => o.id === surguId);
     if (oyuncu) {
       oyuncu.hayatta = false;
-      state.gunduz.surguEdilen = surgu;
+      state.gunduz.surguEdilen = surguId;
+      state.gunduz.beraberAdaylar = [];
       state.log.push(`${oyuncu.isim} sürgün edildi. Rolü: ${oyuncu.rol}.`);
     }
   }
   state.asama = 'gunduz_sonuc';
+  // Kazanan kontrolü burada yapılıyor ama ekran önce gunduz_sonuc gösterecek
   const k = kazananKontrol();
-  if (k) { state.sonuc = k; state.asama = 'bitti'; state.log.push(k === 'sivil' ? 'Köylüler kazandı!' : 'Katiller kazandı!'); }
+  if (k) { state.sonuc = k; state.gunduz.sonucBekliyor = true; state.log.push(k === 'sivil' ? 'Köylüler kazandı!' : 'Katiller kazandı!'); }
 }
 
 function getContentType(ext) {
@@ -143,10 +164,18 @@ const server = http.createServer((req, res) => {
       rol: state.asama === 'bitti' ? o.rol : undefined
     }));
 
+    // Diğer katillerin listesi (sadece katile gönder)
+    const digerKatiller = oyuncu.rol === 'katil'
+      ? state.oyuncular
+          .filter(o => o.rol === 'katil' && o.id !== id)
+          .map(o => ({ id: o.id, isim: o.isim }))
+      : [];
+
     return json({
       asama: state.asama,
       tur: state.tur,
       benimRolum: oyuncu.rol,
+      digerKatiller,
       benimId: id,
       isim: oyuncu.isim,
       hayatta: oyuncu.hayatta,
@@ -165,6 +194,8 @@ const server = http.createServer((req, res) => {
         oldu: (() => { const o = state.oyuncular.find(o => o.id === state.gunduz.oldu); return o ? o.isim : null; })(),
         oylamaAcik: state.gunduz.oylamaAcik,
         benimOyum: state.gunduz.oylama[id] || null,
+        beraberAdaylar: state.gunduz.beraberAdaylar || [],
+        sonucBekliyor: state.gunduz.sonucBekliyor || false,
         surguEdilen: (() => { const o = state.oyuncular.find(o => o.id === state.gunduz.surguEdilen); return o ? { isim: o.isim, rol: o.rol } : null; })()
       },
       sonuc: state.sonuc,
@@ -252,15 +283,20 @@ const server = http.createServer((req, res) => {
 
   if (pathname === '/api/oy-ver' && req.method === 'POST') {
     getBody().then(body => {
-      if (state.asama !== 'oylama') return json({ hata: 'Oylama değil' });
+      const beraberlikTuru = state.asama === 'gunduz_beraberlik';
+      if (state.asama !== 'oylama' && !beraberlikTuru) return json({ hata: 'Oylama değil' });
       const voter = state.oyuncular.find(o => o.id === body.oyVerenId && o.hayatta);
       if (!voter) return json({ hata: 'Geçersiz' });
+      // Beraberlik turunda sadece adaylar seçilebilir
+      if (beraberlikTuru && state.gunduz.beraberAdaylar.length > 0) {
+        if (!state.gunduz.beraberAdaylar.includes(body.hedefId)) return json({ hata: 'Sadece berabere kalanlar seçilebilir' });
+      }
       if (!state.gunduz.oylama[body.oyVerenId]) {
         state.gunduz.oylama[body.oyVerenId] = body.hedefId;
       }
       const hayattakiler = state.oyuncular.filter(o => o.hayatta);
       const oyVerenler = Object.keys(state.gunduz.oylama);
-      if (oyVerenler.length >= hayattakiler.length) oylamayiBitir();
+      if (oyVerenler.length >= hayattakiler.length) oylamayiBitir(beraberlikTuru);
       json({ ok: true });
     });
     return;
@@ -275,7 +311,12 @@ const server = http.createServer((req, res) => {
     return json({ ok: true });
   }
 
-  if (pathname === '/api/yeni-oyun' && req.method === 'POST') {
+  if (pathname === '/api/sonuc-onayla' && req.method === 'POST') {
+    if (state.gunduz.sonucBekliyor) { state.asama = 'bitti'; state.gunduz.sonucBekliyor = false; }
+    return json({ ok: true });
+  }
+
+    if (pathname === '/api/yeni-oyun' && req.method === 'POST') {
     resetState();
     return json({ ok: true });
   }

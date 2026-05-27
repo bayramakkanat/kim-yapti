@@ -33,6 +33,9 @@
 
   .merkez{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;gap:16px;text-align:center}
   .büyük-ikon{font-size:72px}
+  .rol-ikon-buyuk{font-size:120px;line-height:1;filter:drop-shadow(0 0 30px currentColor);position:relative;z-index:1}
+  .rol-ikon-wrap{position:relative;display:flex;align-items:center;justify-content:center;width:160px;height:160px;margin:0 auto}
+  .rol-ikon-bg{position:absolute;inset:0;border-radius:50%;opacity:.15;filter:blur(20px);font-size:120px;display:flex;align-items:center;justify-content:center}
   .büyük-baslik{font-family:'Bebas Neue',sans-serif;font-size:52px;letter-spacing:5px}
   .alt-metin{font-size:14px;color:var(--dim);letter-spacing:2px;text-transform:uppercase;line-height:1.6}
 
@@ -94,7 +97,7 @@
   .oyuncu-bitti-item.dedektif{border-color:rgba(41,128,185,.35);background:rgba(41,128,185,.07)}
   .ob-isim{font-size:16px;font-weight:700;flex:1}
   .ob-rol{font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--dim)}
-  .ob-ikon{font-size:18px}
+  .ob-ikon{font-size:26px;min-width:32px;text-align:center}
 
   /* BAĞLANTI */
   .conn{position:fixed;bottom:8px;right:12px;font-size:11px;color:var(--dim);display:flex;align-items:center;gap:5px;background:var(--sur);padding:4px 10px;border-radius:20px;border:1px solid var(--bdr);z-index:100}
@@ -155,7 +158,10 @@
 <div class="ekran" id="ekran-rol">
   <div class="hdr"><span class="logo-sm">KİM YAPTI?</span><span class="oyuncu-badge" id="rol-isim-badge">—</span></div>
   <div class="merkez" id="rol-merkez">
-    <div class="büyük-ikon" id="rol-ikon">🔪</div>
+    <div class="rol-ikon-wrap">
+      <div class="rol-ikon-bg" id="rol-ikon-bg">🔪</div>
+      <div class="rol-ikon-buyuk" id="rol-ikon">🔪</div>
+    </div>
     <div style="font-size:12px;text-transform:uppercase;letter-spacing:3px;color:var(--dim)">Senin Rolün</div>
     <div class="büyük-baslik" id="rol-baslik">KATİL</div>
     <div class="rol-aciklama" id="rol-aciklama"></div>
@@ -238,6 +244,16 @@
   </div>
 </div>
 
+<!-- ══ BERABERLİK TURU ══ -->
+<div class="ekran" id="ekran-beraberlik">
+  <div class="hdr"><span class="logo-sm">KİM YAPTI?</span><span class="oyuncu-badge" id="beraberlik-badge">—</span></div>
+  <div class="oylama-info" style="background:rgba(231,76,60,.1);border-color:rgba(231,76,60,.3);color:var(--red)">⚖️ Beraberlik! Sadece aşağıdaki adaylar arasında tekrar oy kullan.</div>
+  <div class="kisi-liste" id="beraberlik-kisi-liste"></div>
+  <div class="secim-footer">
+    <button class="btn btn-red" id="btn-beraberlik-oy" onclick="beraberlikOyVer()" disabled>🗳 Oy Ver</button>
+  </div>
+</div>
+
 <!-- ══ OY VERİLDİ ══ -->
 <div class="ekran" id="ekran-oy-verildi">
   <div class="hdr"><span class="logo-sm">KİM YAPTI?</span></div>
@@ -252,7 +268,7 @@
 <div class="ekran" id="ekran-bitti">
   <div class="hdr"><span class="logo-sm">KİM YAPTI?</span></div>
   <div class="merkez" id="bitti-merkez">
-    <div class="büyük-ikon" id="bitti-ikon">🏆</div>
+    <div style="font-size:100px;line-height:1;margin-bottom:4px" id="bitti-ikon">🏆</div>
     <div class="büyük-baslik" id="bitti-baslik">KÖYLÜLER</div>
     <div class="büyük-baslik" id="bitti-baslik2">KAZANDI</div>
     <div class="alt-metin" id="bitti-alt">—</div>
@@ -303,10 +319,12 @@ async function oyuncuVeriAl() {
   if (!benimId) return;
   try {
     const r = await fetch(`/api/oyuncu?id=${benimId}`);
-    veri = await r.json();
-    if (veri.hata) { benimId = null; sessionStorage.removeItem('kimyapti_id'); return; }
+    const yeniVeri = await r.json();
+    if (yeniVeri.hata) { benimId = null; sessionStorage.removeItem('kimyapti_id'); return; }
     document.getElementById('conn-dot').className = 'dot ok';
     document.getElementById('conn-txt').textContent = 'Bağlı';
+    if (!veriDegistimi(yeniVeri)) return;
+    veri = yeniVeri;
     render();
   } catch(e) {
     document.getElementById('conn-dot').className = 'dot no';
@@ -314,16 +332,19 @@ async function oyuncuVeriAl() {
   }
 }
 
+let sonVeriHash = null;
 async function guncelle() { await oyuncuVeriAl(); }
+function veriDegistimi(yeni) {
+  const h = JSON.stringify(yeni);
+  if (h === sonVeriHash) return false;
+  sonVeriHash = h;
+  return true;
+}
 
 // ── EKRAN GEÇİŞİ ──
 let aktifEkran = null;
 function ekranGec(id) {
-  if (aktifEkran === id) {
-    document.querySelectorAll('.ekran').forEach(e => e.classList.remove('aktif'));
-    document.getElementById('ekran-' + id).classList.add('aktif');
-    return;
-  }
+  if (aktifEkran === id) return;
   if (aktifEkran === null) {
     aktifEkran = id;
     document.querySelectorAll('.ekran').forEach(e => e.classList.remove('aktif'));
@@ -378,9 +399,14 @@ function render() {
 
   if (asama === 'oylama') {
     if (veri.gunduz.benimOyum) { ekranGec('oy-verildi'); return; }
-    // Oylama ekranı zaten açıksa yeniden çizme — seçim sıfırlanır
     if (aktifEkran === 'oylama') return;
     renderOylama(); return;
+  }
+
+  if (asama === 'gunduz_beraberlik') {
+    if (veri.gunduz.benimOyum) { ekranGec('oy-verildi'); return; }
+    if (aktifEkran === 'beraberlik') return;
+    renderBeraberlik(); return;
   }
 
   if (asama === 'gunduz_sonuc') {
@@ -396,10 +422,13 @@ function renderRolEkrani() {
   const merkez = document.getElementById('rol-merkez');
   document.getElementById('rol-isim-badge').textContent = veri.isim;
 
+    const digerKatilMetni = (veri.digerKatiller && veri.digerKatiller.length > 0)
+    ? '<br><br><strong style="color:var(--red)">⚠ Ortak katilin:</strong> ' + veri.digerKatiller.map(function(k){ return k.isim; }).join(', ')
+    : '';
   const bilgiler = {
     katil: {
       ikon: '🔪', baslik: 'KATİL', renk: 'var(--red)',
-      aciklama: '<strong>Senin görevin:</strong> Her gece telefon üzerinden bir kişiyi öldür. Kimliğini gizle, sivillere masum görün. Tüm köylüler senin gibi olana kadar hayatta kal.'
+      aciklama: '<strong>Senin görevin:</strong> Her gece telefon üzerinden bir kişiyi öldür. Kimliğini gizle, sivillere masum görün. Tüm köylüler senin gibi olana kadar hayatta kal.' + digerKatilMetni
     },
     dedektif: {
       ikon: '🕵️', baslik: 'DEDEKTİF', renk: 'var(--blue)',
@@ -413,6 +442,8 @@ function renderRolEkrani() {
 
   const b = bilgiler[rol] || bilgiler.sivil;
   document.getElementById('rol-ikon').textContent = b.ikon;
+  const bgEl = document.getElementById('rol-ikon-bg');
+  if (bgEl) { bgEl.textContent = b.ikon; bgEl.style.background = b.renk; }
   document.getElementById('rol-baslik').textContent = b.baslik;
   document.getElementById('rol-baslik').style.color = b.renk;
   document.getElementById('rol-aciklama').innerHTML = b.aciklama;
@@ -555,6 +586,48 @@ function renderOylama() {
     liste.appendChild(div);
   });
   ekranGec('oylama');
+}
+
+let secilenBeraberlikHedef = null;
+
+function renderBeraberlik() {
+  document.getElementById('beraberlik-badge').textContent = veri.isim;
+  secilenBeraberlikHedef = null;
+  document.getElementById('btn-beraberlik-oy').disabled = true;
+  ekranGec('beraberlik');
+
+  const liste = document.getElementById('beraberlik-kisi-liste');
+  liste.innerHTML = '';
+  const adaylar = veri.gunduz.beraberAdaylar || [];
+  veri.tumOyuncular
+    .filter(o => o.hayatta && adaylar.includes(o.id))
+    .forEach(o => {
+      const div = document.createElement('div');
+      div.className = 'kisi-btn';
+      div.dataset.id = o.id;
+      div.innerHTML = `<span class=kisi-ikon>👤</span><span class=kisi-isim>${o.isim}</span>`;
+      div.addEventListener('click', () => {
+        document.querySelectorAll('#beraberlik-kisi-liste .kisi-btn').forEach(b => b.classList.remove('secildi'));
+        div.classList.add('secildi');
+        secilenBeraberlikHedef = o.id;
+        document.getElementById('btn-beraberlik-oy').disabled = false;
+      });
+      liste.appendChild(div);
+    });
+}
+
+async function beraberlikOyVer() {
+  if (!secilenBeraberlikHedef) return;
+  const btn = document.getElementById('btn-beraberlik-oy');
+  btn.disabled = true;
+  try {
+    await fetch('/api/oy-ver', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ oyVerenId: benimId, hedefId: secilenBeraberlikHedef })
+    });
+    ekranGec('oy-verildi');
+  } catch(e) { btn.disabled = false; }
 }
 
 function oyVer() {
